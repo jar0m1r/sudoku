@@ -46,26 +46,6 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
-func (s sudoku) initRun() {
-	for _, r := range s {
-		for _, c := range r {
-			c.broadcastValue(s)
-		}
-	}
-
-	var resolveCnt int
-
-	for _, r := range s {
-		for index := range r {
-			if r[index].resolve() {
-				resolveCnt++
-			}
-		}
-	}
-
-	fmt.Printf("Solved %d after init Run\n", resolveCnt)
-}
-
 //run recalculates the complete matrix, this will probably not be the most efficient. Returns true if something changed and false if no new solution
 func (s sudoku) run() bool {
 	for _, r := range s {
@@ -89,7 +69,8 @@ func (s sudoku) run() bool {
 	return resolveCnt > 0
 }
 
-func guessRun() bool {
+func (s sudoku) guessRun() bool {
+
 	return true
 }
 
@@ -154,7 +135,12 @@ func (f *field) resolve() bool {
 func (s sudoku) Print() {
 	for _, r := range s {
 		for _, c := range r {
-			fmt.Printf("%d ", c.value)
+			if c.value != 0 {
+				fmt.Printf("%d ", c.value)
+			} else {
+				fmt.Printf("[%d]", len(c.optionset))
+			}
+
 		}
 		fmt.Printf("\n")
 	}

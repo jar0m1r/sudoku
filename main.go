@@ -34,11 +34,13 @@ func main() {
 	}
 
 	s := newSudoku(input)
-	s.initRun()
+	//s.initRun()
 
 	for s.run() {
 		fmt.Println("Another run started")
 	}
 
 	s.Print()
+
+	s.guessRun()
 }
