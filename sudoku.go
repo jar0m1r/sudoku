@@ -4,15 +4,6 @@ import (
 	"fmt"
 )
 
-type field struct {
-	value     int
-	optionset []int
-	col       []int
-	row       []int
-	square    []int
-	pos       [2]int
-}
-
 //Sudoku type represents the sudoku matrix
 type sudoku [][]field
 
@@ -70,66 +61,53 @@ func (s sudoku) run() bool {
 }
 
 func (s sudoku) guessRun() bool {
+	//Better way to make full value clone
+	//tempS := sudoku{}
+	tempS := s
+	/* 	for _, r := range s {
+		srow := []field{}
+		for _, c := range r {
+			srow = append(srow, c)
+		}
+		tempS = append(tempS, srow)
+	} */
+
+	//Check dit en begrijp
+	ref1 := s
+	ref2 := tempS
+	fmt.Printf("Original reference %p\n", &ref1)
+	fmt.Printf("Original reference %p\n", &ref2)
 
 	return true
 }
 
-func (f field) broadcastValue(s sudoku) {
-	if f.value != 0 {
-		//col broadcast
-		for _, r := range s {
-			r[f.pos[1]].blockOption("c", f.value)
-		}
-		//row broadcast
-		for index := range s[f.pos[0]] {
-			s[f.pos[0]][index].blockOption("r", f.value)
-		}
-		//square broadcast
-		rowstart := f.pos[0] - f.pos[0]%3
-		colstart := f.pos[1] - f.pos[1]%3
-		for r := rowstart; r < rowstart+3; r++ {
-			for c := colstart; c < colstart+3; c++ {
-				s[r][c].blockOption("s", f.value)
-			}
-		}
+func (s sudoku) getRow(f field) []*field {
+	fs := []*field{}
+	for i := range s[f.pos[0]] {
+		fs = append(fs, &s[f.pos[0]][i])
 	}
+	return fs
 }
 
-func (f *field) blockOption(crs string, i int) { //crs = c(ol) r(ow) s(quare)
-	if f.value == 0 {
-		switch crs {
-		case "c":
-			(*f).col = append((*f).col, i)
-		case "r":
-			(*f).row = append((*f).row, i)
-		case "s":
-			(*f).square = append((*f).square, i)
-		}
-
-		index := findIndex(f.optionset, i)
-
-		if index != len(f.optionset) {
-			(*f).optionset = append((*f).optionset[:index], (*f).optionset[index+1:]...)
-		}
+func (s sudoku) getCol(f field) []*field {
+	fs := []*field{}
+	for _, r := range s {
+		fs = append(fs, &r[f.pos[1]])
 	}
+	return fs
 }
 
-func findIndex(data []int, v int) int {
-	for index, value := range data {
-		if value == v {
-			return index
+func (s sudoku) getSquare(f field) []*field {
+	fs := []*field{}
+	rowstart := f.pos[0] - f.pos[0]%3
+	colstart := f.pos[1] - f.pos[1]%3
+
+	for r := rowstart; r < rowstart+3; r++ {
+		for c := colstart; c < colstart+3; c++ {
+			fs = append(fs, &s[r][c])
 		}
 	}
-	return len(data)
-}
-
-func (f *field) resolve() bool {
-	if f.value == 0 && len(f.optionset) == 1 {
-		(*f).value = f.optionset[0]
-		(*f).optionset = []int{}
-		return true
-	}
-	return false
+	return fs
 }
 
 func (s sudoku) Print() {
