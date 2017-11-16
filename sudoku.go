@@ -37,6 +37,17 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
+func (s sudoku) solve() {
+	for s.run() {
+		fmt.Println("Another run started")
+	}
+
+	if !s.isSolved() {
+		s = s.guessRun()
+	}
+	s.Print()
+}
+
 //run recalculates the complete matrix, this will probably not be the most efficient. Returns true if something changed and false if no new solution
 func (s sudoku) run() bool {
 	for _, r := range s {
@@ -55,52 +66,61 @@ func (s sudoku) run() bool {
 		}
 	}
 
-	fmt.Printf("Solved %d after normal Run\n", resolveCnt)
+	fmt.Printf("Solved %d \n", resolveCnt)
 
 	return resolveCnt > 0
 }
 
-func (s sudoku) guessRun() bool {
-	//Better way to make full value clone
-	//tempS := sudoku{}
-	tempS := s
-	/* 	for _, r := range s {
-		srow := []field{}
-		for _, c := range r {
-			srow = append(srow, c)
+func (s sudoku) guessRun() sudoku {
+	minoptions := 2
+
+	c := make(chan sudoku)
+
+OuterLoop:
+	for x := minoptions; x < 9; x++ {
+		for i := 0; i < 9; i++ {
+			for _, f := range s.getCol(i) {
+				if len(f.optionset) == x {
+					go func(c chan sudoku) { // beware s, f is in closure, make sure this cannot have side effects
+						sClone := s
+						row := f.pos[0]
+						col := f.pos[1]
+						sClone[row][col].forceResolve(0) //hard coded single tree branch guess value at pos 0 of options. todo make full tree and all options
+						for sClone.run() {
+							fmt.Println("Another clone run started")
+						}
+						c <- sClone
+					}(c)
+					break OuterLoop
+				}
+			}
 		}
-		tempS = append(tempS, srow)
-	} */
+		minoptions++
+	}
 
-	//Check dit en begrijp
-	ref1 := s
-	ref2 := tempS
-	fmt.Printf("Original reference %p\n", &ref1)
-	fmt.Printf("Original reference %p\n", &ref2)
-
-	return true
+	return <-c
 }
 
-func (s sudoku) getRow(f field) []*field {
+func (s sudoku) getRow(row int) []*field {
 	fs := []*field{}
-	for i := range s[f.pos[0]] {
-		fs = append(fs, &s[f.pos[0]][i])
+	for i := range s[row] {
+		fs = append(fs, &s[row][i])
 	}
 	return fs
 }
 
-func (s sudoku) getCol(f field) []*field {
+func (s sudoku) getCol(col int) []*field {
 	fs := []*field{}
 	for _, r := range s {
-		fs = append(fs, &r[f.pos[1]])
+		fs = append(fs, &r[col])
 	}
 	return fs
 }
 
-func (s sudoku) getSquare(f field) []*field {
+func (s sudoku) getSquare(row, col int) []*field {
 	fs := []*field{}
-	rowstart := f.pos[0] - f.pos[0]%3
-	colstart := f.pos[1] - f.pos[1]%3
+	rowstart := row - row%3
+	colstart := col - col%3
 
 	for r := rowstart; r < rowstart+3; r++ {
 		for c := colstart; c < colstart+3; c++ {
@@ -122,4 +142,15 @@ func (s sudoku) Print() {
 		}
 		fmt.Printf("\n")
 	}
+}
+
+func (s sudoku) isSolved() bool {
+	for i := 0; i < 9; i++ {
+		for _, f := range s.getRow(i) {
+			if f.value == 0 {
+				return false
+			}
+		}
+	}
+	return true
 }

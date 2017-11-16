@@ -11,9 +11,9 @@ type field struct {
 
 func (f field) broadcastValue(s sudoku) {
 	if f.value != 0 {
-		fs := s.getCol(f)
-		fs = append(fs, s.getRow(f)...)
-		fs = append(fs, s.getSquare(f)...)
+		fs := s.getCol(f.pos[1])
+		fs = append(fs, s.getRow(f.pos[0])...)
+		fs = append(fs, s.getSquare(f.pos[0], f.pos[1])...)
 
 		for i := range fs {
 			if fs[i] != &f {
@@ -49,6 +49,12 @@ func (f *field) resolve() bool {
 		return true
 	}
 	return false
+}
+
+func (f *field) forceResolve(index int) bool {
+	(*f).value = f.optionset[index]
+	(*f).optionset = []int{}
+	return true
 }
 
 func findIndex(data []int, v int) int {

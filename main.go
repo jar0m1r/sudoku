@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strconv"
 )
@@ -36,11 +35,6 @@ func main() {
 	s := newSudoku(input)
 	//s.initRun()
 
-	for s.run() {
-		fmt.Println("Another run started")
-	}
+	s.solve()
 
-	s.Print()
-
-	s.guessRun()
 }
