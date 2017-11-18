@@ -37,15 +37,18 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
-func (s sudoku) solve() {
+func (s sudoku) solve(c chan sudoku) {
 	for s.run() {
 		fmt.Println("Another run started")
 	}
 
+	s.Print()
+
 	if !s.isSolved() {
 		s = s.guessRun()
+	} else {
+		c <- s
 	}
-	s.Print()
 }
 
 //run recalculates the complete matrix, this will probably not be the most efficient. Returns true if something changed and false if no new solution
@@ -73,25 +76,16 @@ func (s sudoku) run() bool {
 
 func (s sudoku) guessRun() sudoku {
 	minoptions := 2
-
 	c := make(chan sudoku)
-
-OuterLoop:
+Outerloop:
 	for x := minoptions; x < 9; x++ {
 		for i := 0; i < 9; i++ {
 			for _, f := range s.getCol(i) {
 				if len(f.optionset) == x {
-					go func(c chan sudoku) { // beware s, f is in closure, make sure this cannot have side effects
-						sClone := s
-						row := f.pos[0]
-						col := f.pos[1]
-						sClone[row][col].forceResolve(0) //hard coded single tree branch guess value at pos 0 of options. todo make full tree and all options
-						for sClone.run() {
-							fmt.Println("Another clone run started")
-						}
-						c <- sClone
-					}(c)
-					break OuterLoop
+					fmt.Println("least options", x)
+					go guessBranch(0, f.pos, s, c)
+					go guessBranch(1, f.pos, s, c)
+					break Outerloop
 				}
 			}
 		}
@@ -99,6 +93,19 @@ OuterLoop:
 	}
 
 	return <-c
+}
+
+func guessBranch(index int, pos [2]int, s sudoku, c chan sudoku) {
+	sClone := s.deepClone()
+	row := pos[0]
+	col := pos[1]
+	fmt.Printf("Original field pointer is %p\n", &s)
+	fmt.Printf("Pointer to field is %p and optionset for this field is %v\n", &sClone, sClone[row][col].optionset)
+	sClone[row][col].forceResolve(index) //hard coded single tree branch guess value at pos 0 of options. todo make full tree and all options
+	for sClone.run() {
+		fmt.Println("Another clone run started")
+	}
+	c <- sClone
 }
 
 func (s sudoku) getRow(row int) []*field {
@@ -153,4 +160,14 @@ func (s sudoku) isSolved() bool {
 		}
 	}
 	return true
+}
+
+func (s sudoku) deepClone() sudoku {
+	sclone := s
+	for _, r := range sclone {
+		for i := range r {
+			r[i] = r[i].deepClone()
+		}
+	}
+	return sclone
 }

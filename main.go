@@ -11,6 +11,8 @@ var input = [][]int{}
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
+	c := make(chan sudoku)
+
 	for scanner.Scan() {
 		b := []rune(scanner.Text())
 		irow := []int{}
@@ -35,6 +37,8 @@ func main() {
 	s := newSudoku(input)
 	//s.initRun()
 
-	s.solve()
+	s.solve(c)
+
+	(<-c).Print()
 
 }

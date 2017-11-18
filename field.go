@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 type field struct {
 	value     int
 	optionset []int
@@ -52,6 +54,7 @@ func (f *field) resolve() bool {
 }
 
 func (f *field) forceResolve(index int) bool {
+	fmt.Println("got index", index)
 	(*f).value = f.optionset[index]
 	(*f).optionset = []int{}
 	return true
@@ -64,4 +67,19 @@ func findIndex(data []int, v int) int {
 		}
 	}
 	return len(data)
+}
+
+func (f field) getOptionsLeft() int {
+	return len(f.optionset)
+}
+
+func (f field) deepClone() field {
+	var fclone field
+	fclone.value = f.value
+	fclone.pos = f.pos
+	fclone.optionset = append(fclone.optionset, f.optionset...)
+	fclone.row = append(fclone.row, f.row...)
+	fclone.col = append(fclone.col, f.col...)
+	fclone.square = append(fclone.square, f.square...)
+	return fclone
 }
