@@ -35,9 +35,8 @@ func main() {
 	}
 
 	s := newSudoku(input)
-	//s.initRun()
 
-	s.solve(c)
+	go s.solve(c)
 
 	(<-c).Print()
 

@@ -38,11 +38,18 @@ func newSudoku(input [][]int) sudoku {
 }
 
 func (s sudoku) solve(c chan sudoku) {
-	for s.run() {
-		fmt.Println("Another run started")
+	for {
+		r := s.run()
+		if r == -1 {
+			fmt.Println("This sudoku cannot be solved")
+			c <- nil
+		} else if r == 0 {
+			fmt.Println("Another run finished but didn't resolve anything")
+			break
+		} else {
+			fmt.Println("Another run finished")
+		}
 	}
-
-	s.Print()
 
 	if !s.isSolved() {
 		s = s.guessRun()
@@ -52,10 +59,13 @@ func (s sudoku) solve(c chan sudoku) {
 }
 
 //run recalculates the complete matrix, this will probably not be the most efficient. Returns true if something changed and false if no new solution
-func (s sudoku) run() bool {
+func (s sudoku) run() int {
 	for _, r := range s {
 		for _, c := range r {
-			c.broadcastValue(s)
+			err := c.broadcastValue(s)
+			if err != nil {
+				return -1
+			}
 		}
 	}
 
@@ -71,7 +81,7 @@ func (s sudoku) run() bool {
 
 	fmt.Printf("Solved %d \n", resolveCnt)
 
-	return resolveCnt > 0
+	return resolveCnt
 }
 
 func (s sudoku) guessRun() sudoku {
@@ -96,16 +106,14 @@ Outerloop:
 }
 
 func guessBranch(index int, pos [2]int, s sudoku, c chan sudoku) {
-	sClone := s.deepClone()
+	sclone := s.deepClone()
 	row := pos[0]
 	col := pos[1]
-	fmt.Printf("Original field pointer is %p\n", &s)
-	fmt.Printf("Pointer to field is %p and optionset for this field is %v\n", &sClone, sClone[row][col].optionset)
-	sClone[row][col].forceResolve(index) //hard coded single tree branch guess value at pos 0 of options. todo make full tree and all options
-	for sClone.run() {
-		fmt.Println("Another clone run started")
-	}
-	c <- sClone
+	sclone[row][col].forceResolve(index)
+
+	d := make(chan sudoku)
+	go sclone.solve(d)
+	c <- (<-d)
 }
 
 func (s sudoku) getRow(row int) []*field {
@@ -163,10 +171,11 @@ func (s sudoku) isSolved() bool {
 }
 
 func (s sudoku) deepClone() sudoku {
-	sclone := s
-	for _, r := range sclone {
+	var sclone sudoku = [][]field{}
+	for index, r := range s {
+		sclone = append(sclone, []field{})
 		for i := range r {
-			r[i] = r[i].deepClone()
+			sclone[index] = append(sclone[index], r[i].deepClone())
 		}
 	}
 	return sclone

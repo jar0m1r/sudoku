@@ -1,6 +1,8 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type field struct {
 	value     int
@@ -11,7 +13,7 @@ type field struct {
 	pos       [2]int
 }
 
-func (f field) broadcastValue(s sudoku) {
+func (f field) broadcastValue(s sudoku) error {
 	if f.value != 0 {
 		fs := s.getCol(f.pos[1])
 		fs = append(fs, s.getRow(f.pos[0])...)
@@ -19,14 +21,28 @@ func (f field) broadcastValue(s sudoku) {
 
 		for i := range fs {
 			if fs[i] != &f {
-				fs[i].blockOption("c", f.value)
+				err := fs[i].blockOption("c", f.value)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
+	return nil
 }
 
-func (f *field) blockOption(crs string, i int) { //crs = c(ol) r(ow) s(quare)
+func (f *field) blockOption(crs string, i int) error { //crs = c(ol) r(ow) s(quare)
 	if f.value == 0 {
+		index := findIndex(f.optionset, i) //returns len(slice) when not found
+
+		if index != len(f.optionset) {
+			if len(f.optionset)-1 != 0 {
+				(*f).optionset = append((*f).optionset[:index], (*f).optionset[index+1:]...)
+			} else {
+				return fmt.Errorf("No option left after blocking %d", i)
+			}
+		}
+
 		switch crs {
 		case "c":
 			(*f).col = append((*f).col, i)
@@ -35,13 +51,8 @@ func (f *field) blockOption(crs string, i int) { //crs = c(ol) r(ow) s(quare)
 		case "s":
 			(*f).square = append((*f).square, i)
 		}
-
-		index := findIndex(f.optionset, i)
-
-		if index != len(f.optionset) {
-			(*f).optionset = append((*f).optionset[:index], (*f).optionset[index+1:]...)
-		}
 	}
+	return nil
 }
 
 func (f *field) resolve() bool {
@@ -53,11 +64,9 @@ func (f *field) resolve() bool {
 	return false
 }
 
-func (f *field) forceResolve(index int) bool {
-	fmt.Println("got index", index)
+func (f *field) forceResolve(index int) {
 	(*f).value = f.optionset[index]
 	(*f).optionset = []int{}
-	return true
 }
 
 func findIndex(data []int, v int) int {
@@ -77,9 +86,9 @@ func (f field) deepClone() field {
 	var fclone field
 	fclone.value = f.value
 	fclone.pos = f.pos
-	fclone.optionset = append(fclone.optionset, f.optionset...)
-	fclone.row = append(fclone.row, f.row...)
-	fclone.col = append(fclone.col, f.col...)
-	fclone.square = append(fclone.square, f.square...)
+	fclone.optionset = append([]int{}, f.optionset...)
+	fclone.row = append([]int{}, f.row...)
+	fclone.col = append([]int{}, f.col...)
+	fclone.square = append([]int{}, f.square...)
 	return fclone
 }
