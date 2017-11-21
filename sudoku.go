@@ -37,24 +37,32 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
-func (s sudoku) solve(c chan sudoku) {
+func (s sudoku) solve() []sudoku {
+
+	if err := s.runCycle(); err != nil {
+		return []sudoku{}
+	}
+
+	//s.Print()
+
+	if !s.isSolved() {
+		return s.guess()
+	}
+	return append([]sudoku{}, s)
+
+}
+
+func (s sudoku) runCycle() error {
 	for {
 		r := s.run()
 		if r == -1 {
-			fmt.Println("This sudoku cannot be solved")
-			c <- nil
+			return fmt.Errorf("This sudoku cannot be solved")
 		} else if r == 0 {
-			fmt.Println("Another run finished but didn't resolve anything")
-			break
+			fmt.Println("Run finished but didn't resolve anything")
+			return nil
 		} else {
 			fmt.Println("Another run finished")
 		}
-	}
-
-	if !s.isSolved() {
-		s = s.guessRun()
-	} else {
-		c <- s
 	}
 }
 
@@ -70,7 +78,6 @@ func (s sudoku) run() int {
 	}
 
 	var resolveCnt int
-
 	for _, r := range s {
 		for index := range r {
 			if r[index].resolve() {
@@ -78,42 +85,55 @@ func (s sudoku) run() int {
 			}
 		}
 	}
-
-	fmt.Printf("Solved %d \n", resolveCnt)
-
 	return resolveCnt
 }
 
-func (s sudoku) guessRun() sudoku {
-	minoptions := 2
-	c := make(chan sudoku)
-Outerloop:
-	for x := minoptions; x < 9; x++ {
-		for i := 0; i < 9; i++ {
-			for _, f := range s.getCol(i) {
-				if len(f.optionset) == x {
-					fmt.Println("least options", x)
-					go guessBranch(0, f.pos, s, c)
-					go guessBranch(1, f.pos, s, c)
-					break Outerloop
-				}
+func (s sudoku) guess() []sudoku {
+	coptions := s.getColOptions()
+	roptions := s.getRowOptions()
+	soptions := s.getSquareOptions()
+
+	fieldsDone := map[*field]bool{} //not really using yet, fix
+	solutions := []sudoku{}
+	for i := 2; i < 10; i++ {
+		if v, ok := coptions[i]; ok {
+			for j := 0; j < i; j++ {
+				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
 			}
+			fieldsDone[v[0]] = true
+			break
 		}
-		minoptions++
 	}
 
-	return <-c
+	for i := 2; i < 10; i++ {
+		if v, ok := roptions[i]; ok {
+			for j := 0; j < i; j++ {
+				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
+			}
+			fieldsDone[v[0]] = true
+			break
+		}
+	}
+
+	for i := 2; i < 10; i++ {
+		if v, ok := soptions[i]; ok {
+			for j := 0; j < i; j++ {
+				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
+			}
+			fieldsDone[v[0]] = true
+			break
+		}
+	}
+
+	return solutions //fix
 }
 
-func guessBranch(index int, pos [2]int, s sudoku, c chan sudoku) {
+func guessBranch(index int, pos [2]int, s sudoku) []sudoku {
 	sclone := s.deepClone()
 	row := pos[0]
 	col := pos[1]
 	sclone[row][col].forceResolve(index)
-
-	d := make(chan sudoku)
-	go sclone.solve(d)
-	c <- (<-d)
+	return sclone.solve()
 }
 
 func (s sudoku) getRow(row int) []*field {
@@ -143,6 +163,68 @@ func (s sudoku) getSquare(row, col int) []*field {
 		}
 	}
 	return fs
+}
+
+func (s sudoku) getColOptions() map[int][]*field {
+	var colOptionsMap = map[int][]*field{}
+	leastSoFar := 100
+	for i := 0; i < 9; i++ {
+		optionsleft := 0
+		var tempMap = map[int][]*field{}
+		for _, f := range s.getCol(i) {
+			if n := f.optionsLeft(); n > 0 {
+				optionsleft = optionsleft + n
+				tempMap[n] = append(tempMap[n], &s[f.pos[0]][f.pos[1]])
+			}
+		}
+		if optionsleft > 0 && optionsleft < leastSoFar {
+			leastSoFar = optionsleft
+			colOptionsMap = tempMap
+		}
+	}
+	return colOptionsMap
+}
+
+func (s sudoku) getRowOptions() map[int][]*field {
+	var rowOptionsMap = map[int][]*field{}
+	leastSoFar := 100
+	for i := 0; i < 9; i++ {
+		optionsleft := 0
+		var tempMap = map[int][]*field{}
+		for _, f := range s.getRow(i) {
+			if n := f.optionsLeft(); n > 0 {
+				optionsleft = optionsleft + n
+				tempMap[n] = append(tempMap[n], &s[f.pos[0]][f.pos[1]])
+			}
+		}
+		if optionsleft > 0 && optionsleft < leastSoFar {
+			leastSoFar = optionsleft
+			rowOptionsMap = tempMap
+		}
+	}
+	return rowOptionsMap
+}
+
+func (s sudoku) getSquareOptions() map[int][]*field {
+	var squareOptionsMap = map[int][]*field{}
+	leastSoFar := 100
+	for i := 0; i < 9; i += 3 {
+		for j := 0; j < 9; j += 3 {
+			optionsleft := 0
+			var tempMap = map[int][]*field{}
+			for _, f := range s.getSquare(i, j) {
+				if n := f.optionsLeft(); n > 0 {
+					optionsleft = optionsleft + n
+					tempMap[n] = append(tempMap[n], &s[f.pos[0]][f.pos[1]])
+				}
+			}
+			if optionsleft > 0 && optionsleft < leastSoFar {
+				leastSoFar = optionsleft
+				squareOptionsMap = tempMap
+			}
+		}
+	}
+	return squareOptionsMap
 }
 
 func (s sudoku) Print() {

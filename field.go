@@ -78,7 +78,10 @@ func findIndex(data []int, v int) int {
 	return len(data)
 }
 
-func (f field) getOptionsLeft() int {
+func (f field) optionsLeft() int {
+	if f.value != 0 {
+		return 0
+	}
 	return len(f.optionset)
 }
 

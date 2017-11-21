@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -10,8 +11,6 @@ var input = [][]int{}
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-
-	c := make(chan sudoku)
 
 	for scanner.Scan() {
 		b := []rune(scanner.Text())
@@ -36,8 +35,11 @@ func main() {
 
 	s := newSudoku(input)
 
-	go s.solve(c)
+	solutions := s.solve()
 
-	(<-c).Print()
+	for i, solution := range solutions {
+		fmt.Println("solution", i)
+		solution.Print()
+	}
 
 }
