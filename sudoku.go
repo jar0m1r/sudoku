@@ -58,10 +58,10 @@ func (s sudoku) runCycle() error {
 		if r == -1 {
 			return fmt.Errorf("This sudoku cannot be solved")
 		} else if r == 0 {
-			fmt.Println("Run finished but didn't resolve anything")
+			//Run finished but didn't resolve anything
 			return nil
 		} else {
-			fmt.Println("Another run finished")
+			//Another run finished and solved some new
 		}
 	}
 }
@@ -93,39 +93,47 @@ func (s sudoku) guess() []sudoku {
 	roptions := s.getRowOptions()
 	soptions := s.getSquareOptions()
 
-	fieldsDone := map[*field]bool{} //not really using yet, fix
+	combinedOptions := map[int][]*field{}
+
+	fieldsDone := map[*field]bool{}
+	for x := 2; x < 10; x++ {
+		if fs, ok := coptions[x]; ok {
+			for _, f := range fs {
+				if _, ok := fieldsDone[f]; !ok {
+					combinedOptions[x] = append(combinedOptions[x], f)
+					fieldsDone[f] = true
+				}
+			}
+		}
+		if fs, ok := roptions[x]; ok {
+			for _, f := range fs {
+				if _, ok := fieldsDone[f]; !ok {
+					combinedOptions[x] = append(combinedOptions[x], f)
+					fieldsDone[f] = true
+				}
+			}
+		}
+		if fs, ok := soptions[x]; ok {
+			for _, f := range fs {
+				if _, ok := fieldsDone[f]; !ok {
+					combinedOptions[x] = append(combinedOptions[x], f)
+					fieldsDone[f] = true
+				}
+			}
+		}
+	}
+
 	solutions := []sudoku{}
 	for i := 2; i < 10; i++ {
-		if v, ok := coptions[i]; ok {
+		if v, ok := combinedOptions[i]; ok {
 			for j := 0; j < i; j++ {
 				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
 			}
-			fieldsDone[v[0]] = true
-			break
+			//break
 		}
 	}
 
-	for i := 2; i < 10; i++ {
-		if v, ok := roptions[i]; ok {
-			for j := 0; j < i; j++ {
-				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
-			}
-			fieldsDone[v[0]] = true
-			break
-		}
-	}
-
-	for i := 2; i < 10; i++ {
-		if v, ok := soptions[i]; ok {
-			for j := 0; j < i; j++ {
-				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
-			}
-			fieldsDone[v[0]] = true
-			break
-		}
-	}
-
-	return solutions //fix
+	return solutions
 }
 
 func guessBranch(index int, pos [2]int, s sudoku) []sudoku {
