@@ -56,7 +56,8 @@ func (s sudoku) runCycle() error {
 	for {
 		r := s.run()
 		if r == -1 {
-			return fmt.Errorf("This sudoku cannot be solved")
+			//there is at least one field without possible solutions
+			return fmt.Errorf("This sudoku is faulty")
 		} else if r == 0 {
 			//Run finished but didn't resolve anything
 			return nil
@@ -89,35 +90,23 @@ func (s sudoku) run() int {
 }
 
 func (s sudoku) guess() []sudoku {
-	coptions := s.getColOptions()
-	roptions := s.getRowOptions()
-	soptions := s.getSquareOptions()
+	alloptions := []map[int][]*field{
+		s.getColOptions(),
+		s.getRowOptions(),
+		s.getSquareOptions(),
+	}
 
 	combinedOptions := map[int][]*field{}
-
 	fieldsDone := map[*field]bool{}
+
 	for x := 2; x < 10; x++ {
-		if fs, ok := coptions[x]; ok {
-			for _, f := range fs {
-				if _, ok := fieldsDone[f]; !ok {
-					combinedOptions[x] = append(combinedOptions[x], f)
-					fieldsDone[f] = true
-				}
-			}
-		}
-		if fs, ok := roptions[x]; ok {
-			for _, f := range fs {
-				if _, ok := fieldsDone[f]; !ok {
-					combinedOptions[x] = append(combinedOptions[x], f)
-					fieldsDone[f] = true
-				}
-			}
-		}
-		if fs, ok := soptions[x]; ok {
-			for _, f := range fs {
-				if _, ok := fieldsDone[f]; !ok {
-					combinedOptions[x] = append(combinedOptions[x], f)
-					fieldsDone[f] = true
+		for _, optionsMap := range alloptions {
+			if fs, ok := optionsMap[x]; ok {
+				for _, f := range fs {
+					if _, ok := fieldsDone[f]; !ok {
+						combinedOptions[x] = append(combinedOptions[x], f)
+						fieldsDone[f] = true
+					}
 				}
 			}
 		}
@@ -129,7 +118,6 @@ func (s sudoku) guess() []sudoku {
 			for j := 0; j < i; j++ {
 				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
 			}
-			//break
 		}
 	}
 
