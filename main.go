@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 )
 
 var input = [][]int{}
@@ -42,53 +44,74 @@ func main() {
 func solve(s sudoku) {
 
 	cRun := make(chan sudoku)
-	cDone := make(chan bool)
 	cGuess := make(chan sudoku)
+	cSolution := make(chan sudoku)
+
+	var mutex sync.Mutex
+	var counter int
 
 	for i := 0; i < 4; i++ {
-		go func(num int, in chan sudoku, done chan bool, out chan sudoku) {
+		go func(num int, in chan sudoku, out chan sudoku) {
 			for s := range in {
+				mutex.Lock()
+				counter++
+				mutex.Unlock()
 				if err := s.runCycle(); err == nil {
-					fmt.Printf("\nRun cycle result\n %s \n----\n", s.Print())
-					out <- s
+					if s.isValid() {
+						out <- s
+					} else {
+						//fmt.Printf("Invalid solution on Routine %d \n", num)
+					}
 				} else {
-					fmt.Printf("Error received on Routine %d, error : %s\n", num, err)
+					//fmt.Printf("Error received on Routine %d, error : %s\n", num, err)
 				}
+				mutex.Lock()
+				counter--
+				mutex.Unlock()
 			}
-		}(i, cRun, cDone, cGuess)
+		}(i, cRun, cGuess)
 	}
 
 	for i := 0; i < 10000; i++ {
-		go func(num int, in chan sudoku, done chan bool, out chan sudoku) {
+		go func(num int, in chan sudoku, out chan sudoku, solution chan sudoku) {
 			for s := range in {
-				fmt.Printf("\nReceived on Guess channel %d\n %v \n --- \n", num, s.Print())
+				mutex.Lock()
+				counter++
+				mutex.Unlock()
 				if !s.isSolved() {
 					for _, clone := range s.guess() {
 						out <- clone
 					}
 				} else {
-					fmt.Printf("\nSOLVED on channel %d!!\n %s \n----\n", num, s.Print())
-					done <- true
-					break
+					solution <- s
 				}
+				mutex.Lock()
+				counter--
+				mutex.Unlock()
 			}
-			/* 		time.Sleep(time.Second * 2)
-			   		fmt.Println("Closing guess channel")
-			   		close(in) */
-		}(i, cGuess, cDone, cRun)
+		}(i, cGuess, cRun, cSolution)
 	}
+
+	go func() {
+		time.Sleep(time.Millisecond * 100)
+		for {
+			if counter == 0 {
+				close(cRun)
+				close(cGuess)
+				close(cSolution)
+				break
+			}
+		}
+	}()
 
 	cRun <- s
 
-mainloop:
-	for {
-		select {
-		case (<-cDone):
-			//time.Sleep(time.Second * 3)
-			fmt.Println("All done..")
-			break mainloop
-		default:
-			//fmt.Println("Waiting for done signal")
+	nSolution := 0
+	for solution := range cSolution {
+		nSolution++
+		fmt.Printf("\nSolution %d\n %s \n", nSolution, solution.Print())
+		if nSolution > 0 {
+			break
 		}
 	}
 

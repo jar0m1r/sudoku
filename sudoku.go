@@ -40,8 +40,6 @@ func newSudoku(input [][]int) sudoku {
 func (s sudoku) runCycle() error {
 	var nRun int
 	for {
-		fmt.Printf("\n Run num %d \n", nRun)
-
 		r := s.run()
 		if r == -1 {
 			//there is at least one field without possible solutions
@@ -76,7 +74,6 @@ func (s sudoku) run() int {
 		}
 	}
 
-	fmt.Printf("Resolved %d\n", resolveCnt)
 	return resolveCnt
 }
 
@@ -237,6 +234,42 @@ func (s sudoku) isSolved() bool {
 			if f.value == 0 {
 				return false
 			}
+		}
+	}
+	return true
+}
+
+func (s sudoku) isValid() bool {
+	for r := 0; r < 9; r++ {
+		if !uniqueSet(s.getRow(r)) {
+			return false
+		}
+		for c := 0; c < 9; c++ {
+			if !uniqueSet(s.getCol(c)) {
+				return false
+			}
+		}
+	}
+
+	for r := 0; r < 9; r += 3 {
+		for c := 0; c < 9; c += 3 {
+			if !uniqueSet(s.getSquare(r, c)) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func uniqueSet(fs []*field) bool {
+	valuesMap := map[int]bool{}
+	for _, f := range fs {
+		v := f.value
+		if v != 0 {
+			if _, ok := valuesMap[v]; ok {
+				return false
+			}
+			valuesMap[v] = true
 		}
 	}
 	return true
