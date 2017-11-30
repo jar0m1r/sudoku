@@ -35,11 +35,61 @@ func main() {
 
 	s := newSudoku(input)
 
-	solutions := s.solve()
+	solve(s)
 
-	for i, solution := range solutions {
-		fmt.Println("solution", i)
-		solution.Print()
+}
+
+func solve(s sudoku) {
+
+	cRun := make(chan sudoku)
+	cDone := make(chan bool)
+	cGuess := make(chan sudoku)
+
+	for i := 0; i < 4; i++ {
+		go func(num int, in chan sudoku, done chan bool, out chan sudoku) {
+			for s := range in {
+				if err := s.runCycle(); err == nil {
+					fmt.Printf("\nRun cycle result\n %s \n----\n", s.Print())
+					out <- s
+				} else {
+					fmt.Printf("Error received on Routine %d, error : %s\n", num, err)
+				}
+			}
+		}(i, cRun, cDone, cGuess)
+	}
+
+	for i := 0; i < 10000; i++ {
+		go func(num int, in chan sudoku, done chan bool, out chan sudoku) {
+			for s := range in {
+				fmt.Printf("\nReceived on Guess channel %d\n %v \n --- \n", num, s.Print())
+				if !s.isSolved() {
+					for _, clone := range s.guess() {
+						out <- clone
+					}
+				} else {
+					fmt.Printf("\nSOLVED on channel %d!!\n %s \n----\n", num, s.Print())
+					done <- true
+					break
+				}
+			}
+			/* 		time.Sleep(time.Second * 2)
+			   		fmt.Println("Closing guess channel")
+			   		close(in) */
+		}(i, cGuess, cDone, cRun)
+	}
+
+	cRun <- s
+
+mainloop:
+	for {
+		select {
+		case (<-cDone):
+			//time.Sleep(time.Second * 3)
+			fmt.Println("All done..")
+			break mainloop
+		default:
+			//fmt.Println("Waiting for done signal")
+		}
 	}
 
 }

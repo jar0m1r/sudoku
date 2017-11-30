@@ -37,23 +37,11 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
-func (s sudoku) solve() []sudoku {
-
-	if err := s.runCycle(); err != nil {
-		return []sudoku{}
-	}
-
-	//s.Print()
-
-	if !s.isSolved() {
-		return s.guess()
-	}
-	return append([]sudoku{}, s)
-
-}
-
 func (s sudoku) runCycle() error {
+	var nRun int
 	for {
+		fmt.Printf("\n Run num %d \n", nRun)
+
 		r := s.run()
 		if r == -1 {
 			//there is at least one field without possible solutions
@@ -64,6 +52,7 @@ func (s sudoku) runCycle() error {
 		} else {
 			//Another run finished and solved some new
 		}
+		nRun++
 	}
 }
 
@@ -86,6 +75,8 @@ func (s sudoku) run() int {
 			}
 		}
 	}
+
+	fmt.Printf("Resolved %d\n", resolveCnt)
 	return resolveCnt
 }
 
@@ -112,24 +103,25 @@ func (s sudoku) guess() []sudoku {
 		}
 	}
 
-	solutions := []sudoku{}
+	result := []sudoku{}
 	for i := 2; i < 10; i++ {
 		if v, ok := combinedOptions[i]; ok {
 			for j := 0; j < i; j++ {
-				solutions = append(solutions, guessBranch(j, v[0].pos, s)...)
+				result = append(result, guessBranch(j, v[0].pos, s))
 			}
+			break
 		}
 	}
-
-	return solutions
+	return result
 }
 
-func guessBranch(index int, pos [2]int, s sudoku) []sudoku {
+func guessBranch(index int, pos [2]int, s sudoku) sudoku {
 	sclone := s.deepClone()
 	row := pos[0]
 	col := pos[1]
 	sclone[row][col].forceResolve(index)
-	return sclone.solve()
+
+	return sclone
 }
 
 func (s sudoku) getRow(row int) []*field {
@@ -223,18 +215,20 @@ func (s sudoku) getSquareOptions() map[int][]*field {
 	return squareOptionsMap
 }
 
-func (s sudoku) Print() {
+func (s sudoku) Print() string {
+	var result string
 	for _, r := range s {
 		for _, c := range r {
 			if c.value != 0 {
-				fmt.Printf("%d ", c.value)
+				result += fmt.Sprintf("%d ", c.value)
 			} else {
-				fmt.Printf("[%d]", len(c.optionset))
+				result += fmt.Sprintf("%s", "_ ") //[%d] len(c.optionset)
 			}
 
 		}
-		fmt.Printf("\n")
+		result += fmt.Sprintf("\n")
 	}
+	return result
 }
 
 func (s sudoku) isSolved() bool {
