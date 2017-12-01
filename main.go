@@ -3,13 +3,20 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
-	"sync"
-	"time"
 )
 
 var input = [][]int{}
+
+func init() {
+	nf, err := os.Create("log.txt")
+	if err != nil {
+		fmt.Println("err")
+	}
+	log.SetOutput(nf)
+}
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -47,72 +54,46 @@ func solve(s sudoku) {
 	cGuess := make(chan sudoku)
 	cSolution := make(chan sudoku)
 
-	var mutex sync.Mutex
-	var counter int
-
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 100; i++ {
 		go func(num int, in chan sudoku, out chan sudoku) {
 			for s := range in {
-				mutex.Lock()
-				counter++
-				mutex.Unlock()
+				log.Printf("run routine %d received from channel in\n", num)
 				if err := s.runCycle(); err == nil {
 					if s.isValid() {
+						log.Printf("run routine %d sending to channel out\n", num)
 						out <- s
-					} else {
-						//fmt.Printf("Invalid solution on Routine %d \n", num)
 					}
-				} else {
-					//fmt.Printf("Error received on Routine %d, error : %s\n", num, err)
 				}
-				mutex.Lock()
-				counter--
-				mutex.Unlock()
+				log.Printf("run routine %d done with loop\n", num)
 			}
 		}(i, cRun, cGuess)
 	}
 
-	for i := 0; i < 10000; i++ {
+	for i := 0; i < 100; i++ {
 		go func(num int, in chan sudoku, out chan sudoku, solution chan sudoku) {
 			for s := range in {
-				mutex.Lock()
-				counter++
-				mutex.Unlock()
+				log.Printf("guess routine %d received from channel in\n", num)
 				if !s.isSolved() {
 					for _, clone := range s.guess() {
+						log.Printf("quess routine %d sending to channel out\n", num)
 						out <- clone
 					}
 				} else {
+					log.Println("Solution found..")
+					log.Printf("quess routine %d sending to channel solution\n", num)
 					solution <- s
 				}
-				mutex.Lock()
-				counter--
-				mutex.Unlock()
+				log.Printf("guess routine %d done with loop\n", num)
 			}
 		}(i, cGuess, cRun, cSolution)
 	}
-
-	go func() {
-		time.Sleep(time.Millisecond * 100)
-		for {
-			if counter == 0 {
-				close(cRun)
-				close(cGuess)
-				close(cSolution)
-				break
-			}
-		}
-	}()
 
 	cRun <- s
 
 	nSolution := 0
 	for solution := range cSolution {
 		nSolution++
-		fmt.Printf("\nSolution %d\n %s \n", nSolution, solution.Print())
-		if nSolution > 0 {
-			break
-		}
+		log.Printf("\nSolution %d\n %s \n", nSolution, solution.Print())
 	}
 
 }
