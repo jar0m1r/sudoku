@@ -49,7 +49,6 @@ func main() {
 }
 
 func solve(s sudoku) {
-
 	cRun := make(chan sudoku)
 	cGuess := make(chan sudoku)
 	cSolution := make(chan sudoku)
@@ -75,12 +74,12 @@ func solve(s sudoku) {
 				log.Printf("guess routine %d received from channel in\n", num)
 				if !s.isSolved() {
 					for _, clone := range s.guess() {
-						log.Printf("quess routine %d sending to channel out\n", num)
+						log.Printf("guess routine %d sending to channel out\n", num)
 						out <- clone
 					}
 				} else {
 					log.Println("Solution found..")
-					log.Printf("quess routine %d sending to channel solution\n", num)
+					log.Printf("guess routine %d sending to channel solution\n", num)
 					solution <- s
 				}
 				log.Printf("guess routine %d done with loop\n", num)
