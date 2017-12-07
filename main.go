@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"sync"
 )
 
 var input = [][]int{}
@@ -44,55 +45,64 @@ func main() {
 
 	s := newSudoku(input)
 
-	solve(s)
+	solution := solve(s)
+
+	fmt.Printf("Solution is \n%v\n", solution.Print())
 
 }
 
-func solve(s sudoku) {
-	cRun := make(chan sudoku)
-	cGuess := make(chan sudoku)
-	cSolution := make(chan sudoku)
+func solve(s sudoku) sudoku {
+	done := make(chan bool)
+	queue := make(chan sudoku)
+	solved := make(chan sudoku)
 
-	for i := 0; i < 100; i++ {
-		go func(num int, in chan sudoku, out chan sudoku) {
-			for s := range in {
-				log.Printf("run routine %d received from channel in\n", num)
-				if err := s.runCycle(); err == nil {
-					if s.isValid() {
-						log.Printf("run routine %d sending to channel out\n", num)
-						out <- s
-					}
-				}
-				log.Printf("run routine %d done with loop\n", num)
+	guessqueue := []sudoku{}
+
+	doRun(done, queue, solved, s)
+
+	for {
+		select {
+		case ns := <-queue:
+			guessqueue = append(guessqueue, ns)
+		case <-done:
+			if len(guessqueue) > 0 {
+				lastS := guessqueue[len(guessqueue)-1]
+				guessqueue = guessqueue[:len(guessqueue)-1]
+				gs := lastS.guess()
+				doRun(done, queue, solved, gs...)
+				continue
 			}
-		}(i, cRun, cGuess)
+			return sudoku{}
+		case sol := <-solved:
+			return sol
+		}
 	}
+}
 
-	for i := 0; i < 100; i++ {
-		go func(num int, in chan sudoku, out chan sudoku, solution chan sudoku) {
-			for s := range in {
-				log.Printf("guess routine %d received from channel in\n", num)
-				if !s.isSolved() {
-					for _, clone := range s.guess() {
-						log.Printf("guess routine %d sending to channel out\n", num)
-						out <- clone
+func doRun(done chan bool, queue chan sudoku, solved chan sudoku, suds ...sudoku) {
+
+	var wg sync.WaitGroup
+	wg.Add(len(suds))
+
+	for _, su := range suds {
+		go func(s sudoku) {
+			if err := s.run(); err == nil {
+				if s.isValid() {
+					if s.isSolved() {
+						solved <- s
+						wg.Done()
+						return
 					}
-				} else {
-					log.Println("Solution found..")
-					log.Printf("guess routine %d sending to channel solution\n", num)
-					solution <- s
+					queue <- s
 				}
-				log.Printf("guess routine %d done with loop\n", num)
 			}
-		}(i, cGuess, cRun, cSolution)
+			wg.Done()
+		}(su)
 	}
 
-	cRun <- s
-
-	nSolution := 0
-	for solution := range cSolution {
-		nSolution++
-		log.Printf("\nSolution %d\n %s \n", nSolution, solution.Print())
-	}
+	go func() {
+		wg.Wait()
+		done <- true
+	}()
 
 }

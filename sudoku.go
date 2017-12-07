@@ -37,25 +37,20 @@ func newSudoku(input [][]int) sudoku {
 	return s
 }
 
-func (s sudoku) runCycle() error {
-	var nRun int
+func (s sudoku) run() error {
 	for {
-		r := s.run()
+		r := s.runCycle()
 		if r == -1 {
-			//there is at least one field without possible solutions
 			return fmt.Errorf("This sudoku is faulty")
 		} else if r == 0 {
-			//Run finished but didn't resolve anything
 			return nil
 		} else {
-			//Another run finished and solved some new
+			//run again until 0 solved
 		}
-		nRun++
 	}
 }
 
-//run recalculates the complete matrix, this will probably not be the most efficient. Returns true if something changed and false if no new solution
-func (s sudoku) run() int {
+func (s sudoku) runCycle() int {
 	for _, r := range s {
 		for _, c := range r {
 			err := c.broadcastValue(s)
