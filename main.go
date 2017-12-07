@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 )
 
 var input = [][]int{}
@@ -44,10 +45,11 @@ func main() {
 	}
 
 	s := newSudoku(input)
-
+	start := time.Now()
 	solution := solve(s)
+	elapsed := time.Since(start)
 
-	fmt.Printf("Solution is \n%v\n", solution.Print())
+	fmt.Printf("Solution is \n%v\nin %s", solution.Print(), elapsed)
 
 }
 
